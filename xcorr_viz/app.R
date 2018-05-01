@@ -8,73 +8,51 @@ require('glue')
 
 final_sim_data<-read.csv('simulated_corrd_data.csv')
 
-ui <- fillPage(
-  padding = c(20,20),
+ui <- fluidPage(
   
   fluidRow(
 
     column(width = 4,
+           align = 'center',
            h4('Population Correlation Coefficient',
               align = 'center'),
-           hr()
-           ),
-    column(width = 4,
-           h4('Percent of Population to Sample',
-              align = 'center'),
-           hr()
-           ),
-    column(width = 4,
-           h4('Number of Samples to Draw',
-              align = 'center'),
-           hr()
-    )
-  ),
-  
-  fluidRow(
-      
-    column(width = 4,
-           align = 'center',
+           hr(),
            sliderInput(inputId = 'true_r_size',
                        label = NULL,
                        min = -.95,
                        max = .95,
                        step = .05,
-                       value = 0)
-    ),
-      
-      column(width = 4,
-             align = 'center',
-             sliderInput(inputId = 'sample_size',
-                         label = NULL,
-                         min = 01,
-                         max = 100,
-                         step = 1,
-                         value = 15)
-      ),
-    
+                       value = 0),
+           p('This value reflects your expectations of the true linear relationship between X and Y in the 
+             population from which your sample comes.')
+           
+           ),
     column(width = 4,
            align = 'center',
+           h4('Percent of Population to Sample',
+              align = 'center'),
+           hr(),
+           sliderInput(inputId = 'sample_size',
+                       label = NULL,
+                       min = 01,
+                       max = 100,
+                       step = 1,
+                       value = 15),
+           p('This number represents the percentage of the population you plan to sample in your survey.
+             Samples which capture a larger proportion of the population generally provide more accurate estimations of effects
+             at the population level.')
+           ),
+    column(width = 4,
+           align = 'center',
+           h4('Number of Samples to Draw',
+              align = 'center'),
+           hr(),
            sliderInput(inputId = 'n_samples',
                        label = NULL,
                        min = 100,
                        max = 1000,
                        step = 50,
-                       value = 500)
-           )
-  ),
-  
-  fluidRow(
-    
-    column(width = 4,
-           p('This value reflects your expectations of the true linear relationship between X and Y in the 
-             population from which your sample comes.')
-    ),
-    column(width = 4,
-           p('This number represents the percentage of the population you plan to sample in your survey.
-             Samples which capture a larger proportion of the population generally provide more accurate estimations of effects
-             at the population level.')
-    ),
-    column(width = 4,
+                       value = 500),
            p('This value determines the number of random samples drawn from the population to produce the chart below. The more 
              samples that are drawn, the more stable and accurate the estimates.')
     )
@@ -83,7 +61,21 @@ ui <- fillPage(
   fluidRow(
     column(width = 4,
            align = 'center',
-           hr(),
+           hr()
+    ),
+    column(width = 4,
+           align = 'center',
+           hr()
+    ),
+    column(width = 4,
+           align = 'center',
+           hr()
+    )
+  ),
+
+  fluidRow(
+    column(width = 3,
+           align = 'center',
            selectInput(inputId = 'x_treat',
                        label = 'X Treatment',
                        choices = list('Continuous',
@@ -101,7 +93,26 @@ ui <- fillPage(
                                       'Median Split')
                        ),
            actionButton(inputId = 'update',
-                        label = 'Plot Results')),
+                        label = 'Plot Results'),
+           
+           h4('Note:',
+              align = 'left'),
+           p('This app relies on calculation of the Pearson correlation coefficient,
+             which may not be appropriate for all user-defined x/y pairs. Specifically, this type of bivariate estimate is
+             not appropriate when both variables are dichotomous. When one variable is dichotomous, the Pearson correlation is 
+             equivalent to the point-biserial correlation and therefore an appropriate estimate.',
+             align = 'left'),
+           
+           h4('Background:',
+              align = 'left'),
+           p('Commonly, constructs assumed to exists on a continous dimension (e.g., attitudes) are measured using descretely-scaled
+             survey instruments (e.g., Likert scales). As shown in these simulations, this results in a slight bias to our estimates.
+             However, when additional transformations are applied to these descrete scales which restrict the expression of variance to 
+             a binary form (e.g., median splits), estimations become unrepresentative of their true nature in the population. The purpose
+             of this application is to demonstrate the effect of common variable transformations on correlation coefficient estimates.',
+             align = 'left')
+           
+           ),
     column(width = 8,
            align = 'center',
            br(),
