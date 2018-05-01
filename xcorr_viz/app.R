@@ -1,12 +1,15 @@
-library(shiny)
-library(parallel)
-library(ggplot2)
-library(dplyr)
+require('shiny')
+require('parallel')
+require('ggplot2')
+require('dplyr')
+require('MASS')
+require('stringi')
+require('glue')
 
 final_sim_data<-read.csv('simulated_corrd_data.csv')
 
 ui <- fillPage(
-  padding = c(10,20),
+  padding = c(20,20),
   
   fluidRow(
 
@@ -81,7 +84,6 @@ ui <- fillPage(
     column(width = 4,
            align = 'center',
            hr(),
-           br(),
            selectInput(inputId = 'x_treat',
                        label = 'X Treatment',
                        choices = list('Continuous',
@@ -89,12 +91,7 @@ ui <- fillPage(
                                       'Top-Box',
                                       'Top2-Box',
                                       'Median Split')
-                       )
-    ),
-    column(width = 4,
-           align = 'center',
-           hr(),
-           br(),
+                       ),
            selectInput(inputId =  'y_treat',
                        label = 'Y Treatment',
                        choices = list('Continuous',
@@ -102,25 +99,14 @@ ui <- fillPage(
                                       'Top-Box',
                                       'Top2-Box',
                                       'Median Split')
-                       )
-           ),
-    
-    column(width = 4,
-           align = 'center',
-           hr(),
-           br(),
+                       ),
            actionButton(inputId = 'update',
-                        label = 'Update Results'))
-  ),
-  
-  fluidRow(
-    column(width = 12,
+                        label = 'Plot Results')),
+    column(width = 8,
            align = 'center',
            br(),
-           br(),
-           plotOutput(outputId = 'coef_plot',
-                      width = '85%')
-    )
+           plotOutput(outputId = 'coef_plot')
+           )
   )
 )
      
@@ -220,8 +206,10 @@ server <- function(input, output) {
                fill = factor(type,
                              labels = c('X and Y Continuous',
                                         'X and Y Descretized',
-                                        'User Defined')))
-    ) +
+                                        stringr::str_c('X ', paste(input$x_treat), ' and Y ', paste(input$y_treat))
+                                        )
+                             )
+               )) +
       geom_boxplot() +
       ggtitle("Correlation Coefficient Estimates by Variable Treatment") +
       labs(x = "",
@@ -231,7 +219,8 @@ server <- function(input, output) {
             plot.subtitle = element_text(hjust = .5),
             axis.text.x = element_blank(),
             axis.ticks.x = element_blank())
-  }
+  },
+  res = 100
   )
   
 }
