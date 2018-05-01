@@ -78,7 +78,34 @@ ui <- fillPage(
   ),
   
   fluidRow(
-    column(width = 12,
+    column(width = 4,
+           align = 'center',
+           hr(),
+           br(),
+           selectInput(inputId = 'x_treat',
+                       label = 'X Treatment',
+                       choices = list('Continuous',
+                                      'Descrete',
+                                      'Top-Box',
+                                      'Top2-Box',
+                                      'Median Split')
+                       )
+    ),
+    column(width = 4,
+           align = 'center',
+           hr(),
+           br(),
+           selectInput(inputId =  'y_treat',
+                       label = 'Y Treatment',
+                       choices = list('Continuous',
+                                      'Descrete',
+                                      'Top-Box',
+                                      'Top2-Box',
+                                      'Median Split')
+                       )
+           ),
+    
+    column(width = 4,
            align = 'center',
            hr(),
            br(),
@@ -104,26 +131,77 @@ server <- function(input, output) {
     simd_pop<-dplyr::filter(final_sim_data,
                             true_r == input$true_r_size)
         
-    plyr::rdply(input$n_samples,
-                sample_frac(simd_pop,
-                            size = input$sample_size/100) %>%
+    base_data<-plyr::rdply(input$n_samples,
+                           sample_frac(simd_pop,
+                                       size = input$sample_size/100)
+                           ) %>%
+      group_by(.n) %>%
                   mutate(
                     x_descrete = as.numeric(cut(x, 7)),
-                    y_descrete = as.numeric(cut(y, 7)),
-                    x_topbox = ifelse(x_descrete == 7, 1, 0),
-                    y_topbox = ifelse(y_descrete == 7, 1, 0),
-                    x_top2box = ifelse(x_descrete >= 6, 1, 0),
-                    y_top2box = ifelse(y_descrete >= 6, 1, 0),
-                    x_medsplit = ifelse(x >= median(x), 1 ,0),
-                    y_medsplit = ifelse(y >= median(y), 1, 0)
-                  )
-    ) %>%
-      group_by(.n) %>%
-      summarize(continuous_corr = cor(x,y),
-                descrete_corr = cor(x_descrete, y_descrete),
-                topbox_corr = cor(x_topbox, y_topbox),
-                top2box_corr = cor(x_top2box, y_top2box),
-                medsplit_corr = cor(x_medsplit, y_medsplit)
+                    y_descrete = as.numeric(cut(y, 7))
+                  ) %>%
+      ungroup()
+    
+    
+    if(input$x_treat == 'Continuous'){
+      udef_data<-group_by(base_data,
+                          .n) %>%
+        mutate(user_x = x) %>%
+        ungroup()
+      } else if(input$x_treat == 'Descrete'){
+      udef_data<-group_by(base_data,
+                          .n) %>%
+        mutate(user_x = x_descrete) %>%
+        ungroup()
+      } else if(input$x_treat == 'Top-Box'){
+        udef_data<-group_by(base_data,
+                            .n) %>%
+        mutate(user_x = ifelse(x_descrete == 7, 1, 0)) %>%
+          ungroup()
+      } else if(input$x_treat == 'Top2-Box'){
+        udef_data<-group_by(base_data,
+                            .n) %>%
+        mutate(user_x = ifelse(x_descrete >= 6, 1, 0)) %>%
+          ungroup()
+      } else if(input$x_treat == 'Median Split'){
+        udef_data<-group_by(base_data,
+                            .n) %>%
+        mutate(user_x = ifelse(x >= median(x), 1 ,0)) %>%
+          ungroup()
+      }
+    
+    if(input$y_treat == 'Continuous'){
+      udef_data<-group_by(udef_data,
+                          .n) %>%
+        mutate(user_y = y) %>%
+        ungroup()
+    } else if(input$y_treat == 'Descrete'){
+      udef_data<-group_by(udef_data,
+                          .n) %>%
+        mutate(user_y = y_descrete) %>%
+        ungroup()
+    } else if(input$y_treat == 'Top-Box'){
+      udef_data<-group_by(udef_data,
+                          .n) %>%
+      mutate(user_y = ifelse(y_descrete == 7, 1, 0)) %>%
+        ungroup()
+    } else if(input$y_treat == 'Top2-Box'){
+      udef_data<-group_by(udef_data,
+                          .n) %>%
+      mutate(user_y = ifelse(y_descrete >= 6, 1, 0)) %>%
+        ungroup()
+    } else if(input$y_treat == 'Median Split'){
+      udef_data<-group_by(udef_data,
+                          .n) %>%
+      mutate(user_y = ifelse(y >= median(y), 1, 0)) %>%
+        ungroup()
+    }
+    
+    group_by(udef_data,
+             .n) %>%
+      summarize('Continuous' = cor(x,y),
+                'Descrete' = cor(x_descrete, y_descrete),
+                'User Defined' = cor(user_x, user_y)
       ) %>%
       tidyr::gather(key = type,
                     value = corr,
@@ -139,8 +217,10 @@ server <- function(input, output) {
     ggplot(data_input(), 
            aes(x = as.factor(0), #doesn't actually matter 
                y = corr,
-               fill = factor(type, labels = c("Continuous", "Discrete", "Median Split",
-                                              'Top2 Box', 'Top Box')))
+               fill = factor(type,
+                             labels = c('X and Y Continuous',
+                                        'X and Y Descretized',
+                                        'User Defined')))
     ) +
       geom_boxplot() +
       ggtitle("Correlation Coefficient Estimates by Variable Treatment") +
