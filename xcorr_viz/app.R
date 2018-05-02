@@ -5,8 +5,25 @@ require('dplyr')
 require('MASS')
 require('stringi')
 require('glue')
+library('plotly')
+library('shinycssloaders')
+
 
 final_sim_data<-read.csv('simulated_corrd_data.csv')
+
+proper_box<-function(x){
+  stat_vals<-c(min(x),
+               mean(x) - (1.96*sd(x)), #lower 95% CI
+               mean(x),
+               mean(x) + (1.96*sd(x)), #upper 95% CI
+               max(x)
+  )
+  
+  names(stat_vals) <- c("ymin", "lower", "middle", "upper", "ymax")
+  
+  stat_vals
+  
+}
 
 ui <- fluidPage(
   
@@ -54,7 +71,7 @@ ui <- fluidPage(
                        step = 50,
                        value = 500),
            p('This value determines the number of random samples drawn from the population to produce the chart below. The more 
-             samples that are drawn, the more stable and accurate the estimates.')
+             samples that are drawn, the more stable and accurate the estimates. However, this adds computational time as well.')
     )
   ),
   
@@ -92,31 +109,46 @@ ui <- fluidPage(
                                       'Top2-Box',
                                       'Median Split')
                        ),
+           checkboxInput(inputId = 'show_points',
+                         label = 'Plot All Estimates as Points'),
+           
            actionButton(inputId = 'update',
                         label = 'Plot Results'),
            
-           h4('Note:',
+           h5(strong('Note:'),
               align = 'left'),
-           p('This app relies on calculation of the Pearson correlation coefficient,
-             which may not be appropriate for all user-defined x/y pairs. Specifically, this type of bivariate estimate is
-             not appropriate when both variables are dichotomous. When one variable is dichotomous, the Pearson correlation is 
-             equivalent to the point-biserial correlation and therefore an appropriate estimate.',
-             align = 'left'),
+           p('Plot boxes depict the mean and 95% confidence intervals around the mean. Whiskers show min and max values.')
            
-           h4('Background:',
-              align = 'left'),
-           p('Commonly, constructs assumed to exists on a continous dimension (e.g., attitudes) are measured using descretely-scaled
-             survey instruments (e.g., Likert scales). As shown in these simulations, this results in a slight bias to our estimates.
-             However, when additional transformations are applied to these descrete scales which restrict the expression of variance to 
-             a binary form (e.g., median splits), estimations become unrepresentative of their true nature in the population. The purpose
-             of this application is to demonstrate the effect of common variable transformations on correlation coefficient estimates.',
-             align = 'left')
            
            ),
     column(width = 8,
            align = 'center',
-           br(),
-           plotOutput(outputId = 'coef_plot')
+           tabsetPanel(type = 'tabs',
+                       tabPanel('Plot',
+                                br(),
+                                plotlyOutput(outputId = 'coef_plot') %>%
+                                  withSpinner(type = 4)
+                                ),
+                       tabPanel('Background',
+                                br(),
+                                p('Commonly, constructs assumed to exist on a continous dimension (e.g., attitudes) are measured 
+                                  using descretely-scaled survey instruments (e.g., Likert scales). As shown in these simulations, 
+                                  this results in a slight bias to our estimates. Importantly, though, this bias is minor and well 
+                                  outside the bounds of even liberal standards of statistical significance.',
+                                  align = 'left'),
+                                p('However, when additional transformations are applied to these descrete scales which restrict
+                                  the expression of variance to a binary form (e.g., median splits), estimations become 
+                                  unrepresentative of their true nature in the population. The purpose of this application is to 
+                                  demonstrate the effect of these binary variable transformations on correlation coefficient estimates.',
+                                  align = 'left'),
+                                p('This app relies on calculation of the Pearson correlation coefficient, which may not be 
+                                  appropriate for all user-defined x/y pairs. Specifically, this type of bivariate estimate is not 
+                                  appropriate when both variables are dichotomous. When one variable is dichotomous, the Pearson 
+                                  correlation is equivalent to the point-biserial correlation and therefore an appropriate estimate.',
+                                  align = 'left')
+                                )
+                       )
+           
            )
   )
 )
@@ -203,39 +235,49 @@ server <- function(input, output) {
       tidyr::gather(key = type,
                     value = corr,
                     -.n
+      ) %>%
+      mutate(type = factor(type,
+                           labels = c('X and Y Continuous',
+                                      'X and Y Descretized',
+                                      'User Defined')
+                           )
       )
-    
     
   })
    
-  
-  output$coef_plot <- renderPlot({
+  output$coef_plot<-renderPlotly({
     
-    ggplot(data_input(), 
-           aes(x = as.factor(0), #doesn't actually matter 
+    ggthemr::ggthemr('flat')
+    
+    p<-ggplot(data_input(), 
+           aes(x = type, 
                y = corr,
-               fill = factor(type,
-                             labels = c('X and Y Continuous',
-                                        'X and Y Descretized',
-                                        stringr::str_c('X ', paste(input$x_treat), ' and Y ', paste(input$y_treat))
-                                        )
-                             )
+               fill = type
                )) +
-      geom_boxplot() +
+      stat_summary(fun.data = proper_box, geom = 'boxplot') +
       ggtitle("Correlation Coefficient Estimates by Variable Treatment") +
       labs(x = "",
            y = "Estimated Sample Correlation Coefficient",
-           fill = "Variable Treatment") +
-      theme(plot.title = element_text(hjust = .5),
-            plot.subtitle = element_text(hjust = .5),
+           fill = "") +
+      theme(plot.title = element_text(hjust = .3),
             axis.text.x = element_blank(),
-            axis.ticks.x = element_blank())
-  },
-  res = 100
+            axis.ticks.x = element_blank()) 
+    
+   if(input$show_points){
+     
+     p<-ggplotly(p+geom_jitter()) %>%
+       config(displayModeBar = FALSE)
+   
+     } else { 
+       p<-ggplotly(p) %>%
+     config(displayModeBar = FALSE)
+       }
+    
+    
+    
+  }
   )
-  
 }
 
 # Run the application 
 shinyApp(ui = ui, server = server)
-
