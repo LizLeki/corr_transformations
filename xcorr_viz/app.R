@@ -1,31 +1,37 @@
-require('shiny')
-require('parallel')
-require('ggplot2')
-require('dplyr')
-require('MASS')
-require('stringi')
-require('glue')
+library('shiny')
+library('parallel')
+library('ggplot2')
+library('dplyr')
+library('MASS')
+library('stringi')
+library('glue')
 library('plotly')
 library('shinycssloaders')
 
 
 final_sim_data<-read.csv('simulated_corrd_data.csv')
 
-proper_box<-function(x){
-  stat_vals<-c(min(x),
-               mean(x) - (1.96*sd(x)), #lower 95% CI
-               mean(x),
-               mean(x) + (1.96*sd(x)), #upper 95% CI
-               max(x)
-  )
-  
-  names(stat_vals) <- c("ymin", "lower", "middle", "upper", "ymax")
-  
-  stat_vals
-  
+quantiles_95 <- function(x) {
+  r <- quantile(x, probs=c(0.05, 0.25, 0.5, 0.75, 0.95))
+  names(r) <- c("ymin", "lower", "middle", "upper", "ymax")
+  r
 }
 
 ui <- fluidPage(
+
+  title = 'Transformations & Correlations',
+  
+  fluidRow(
+    column(width = 3,
+           hr()
+    ),
+    column(width = 4,
+           hr()
+    ),
+    column(width = 3,
+           hr()
+           )
+  ),
   
   fluidRow(
 
@@ -117,7 +123,9 @@ ui <- fluidPage(
            
            h5(strong('Note:'),
               align = 'left'),
-           p('Plot boxes depict the mean and 95% confidence intervals around the mean. Whiskers show min and max values.')
+           p('In this version of a box and whiskers plot, boxes represents the 50% of values contained in the middle of the distribution,
+             while the whiskers depict 95% confidence intervals. As such, non-overlapping whiskers can be used to determine whether 
+             significant differences are derived from variable treatment.')
            
            
            ),
@@ -138,8 +146,9 @@ ui <- fluidPage(
                                   align = 'left'),
                                 p('However, when additional transformations are applied to these descrete scales which restrict
                                   the expression of variance to a binary form (e.g., median splits), estimations become 
-                                  unrepresentative of their true nature in the population. The purpose of this application is to 
-                                  demonstrate the effect of these binary variable transformations on correlation coefficient estimates.',
+                                  unrepresentative of their true nature in the population. This seems especially true for strong bivariate relationships.
+                                  The purpose of this application is to demonstrate the effect of these binary variable transformations on correlation
+                                  coefficient estimates.',
                                   align = 'left'),
                                 p('This app relies on calculation of the Pearson correlation coefficient, which may not be 
                                   appropriate for all user-defined x/y pairs. Specifically, this type of bivariate estimate is not 
@@ -150,6 +159,10 @@ ui <- fluidPage(
                        )
            
            )
+  ),
+  fluidRow(
+    column(width = 12,
+           hr())
   )
 )
      
@@ -254,12 +267,13 @@ server <- function(input, output) {
                y = corr,
                fill = type
                )) +
-      stat_summary(fun.data = proper_box, geom = 'boxplot') +
+      stat_summary(fun.data = quantiles_95, geom = 'boxplot') +
       ggtitle("Correlation Coefficient Estimates by Variable Treatment") +
       labs(x = "",
            y = "Estimated Sample Correlation Coefficient",
            fill = "") +
-      theme(plot.title = element_text(hjust = .3),
+      ylim(-1,1) +
+      theme(plot.title = element_text(hjust = .2),
             axis.text.x = element_blank(),
             axis.ticks.x = element_blank()) 
     
