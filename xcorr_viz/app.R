@@ -22,22 +22,11 @@ ui <- fluidPage(
   title = 'Transformations & Correlations',
   
   fluidRow(
-    column(width = 3,
-           hr()
-    ),
-    column(width = 4,
-           hr()
-    ),
-    column(width = 3,
-           hr()
-           )
-  ),
-  
-  fluidRow(
 
     column(width = 4,
            align = 'center',
-           h4('Population Correlation Coefficient',
+           hr(),
+           h5(strong('Population Correlation Coefficient'),
               align = 'center'),
            hr(),
            sliderInput(inputId = 'true_r_size',
@@ -47,12 +36,14 @@ ui <- fluidPage(
                        step = .05,
                        value = 0),
            p('This value reflects your expectations of the true linear relationship between X and Y in the 
-             population from which your sample comes.')
+             population from which your sample comes.',
+             style = 'font-size:80%')
            
            ),
     column(width = 4,
            align = 'center',
-           h4('Percent of Population to Sample',
+           hr(),
+           h5(strong('Percent of Population to Sample'),
               align = 'center'),
            hr(),
            sliderInput(inputId = 'sample_size',
@@ -63,11 +54,13 @@ ui <- fluidPage(
                        value = 15),
            p('This number represents the percentage of the population you plan to sample in your survey.
              Samples which capture a larger proportion of the population generally provide more accurate estimations of effects
-             at the population level.')
+             at the population level.',
+             style = 'font-size:80%')
            ),
     column(width = 4,
+           hr(),
            align = 'center',
-           h4('Number of Samples to Draw',
+           h5(strong('Number of Samples to Draw'),
               align = 'center'),
            hr(),
            sliderInput(inputId = 'n_samples',
@@ -77,7 +70,8 @@ ui <- fluidPage(
                        step = 50,
                        value = 500),
            p('This value determines the number of random samples drawn from the population to produce the chart below. The more 
-             samples that are drawn, the more stable and accurate the estimates. However, this adds computational time as well.')
+             samples that are drawn, the more stable and accurate the estimates. However, this adds computational time as well.',
+             style = 'font-size:80%')
     )
   ),
   
@@ -119,13 +113,14 @@ ui <- fluidPage(
                          label = 'Plot All Estimates as Points'),
            
            actionButton(inputId = 'update',
-                        label = 'Plot Results'),
+                        label = 'Simulate & Plot Results'),
            
            h5(strong('Note:'),
               align = 'left'),
-           p('In this version of a box and whiskers plot, boxes represents the 50% of values contained in the middle of the distribution,
+           p('In this version of a box and whiskers plot, boxes represent the 50% of values contained in the middle of the distribution,
              while the whiskers depict 95% confidence intervals. As such, non-overlapping whiskers can be used to determine whether 
-             significant differences are derived from variable treatment.')
+             significant differences are derived from variable treatment.',
+             style = 'font-size:80%')
            
            
            ),
@@ -143,18 +138,21 @@ ui <- fluidPage(
                                   using descretely-scaled survey instruments (e.g., Likert scales). As shown in these simulations, 
                                   this results in a slight bias to our estimates. Importantly, though, this bias is minor and well 
                                   outside the bounds of even liberal standards of statistical significance.',
-                                  align = 'left'),
+                                  align = 'left',
+                                  style = 'font-size:90%'),
                                 p('However, when additional transformations are applied to these descrete scales which restrict
                                   the expression of variance to a binary form (e.g., median splits), estimations become 
                                   unrepresentative of their true nature in the population. This seems especially true for strong bivariate relationships.
                                   The purpose of this application is to demonstrate the effect of these binary variable transformations on correlation
                                   coefficient estimates.',
-                                  align = 'left'),
+                                  align = 'left',
+                                  style = 'font-size:90%'),
                                 p('This app relies on calculation of the Pearson correlation coefficient, which may not be 
                                   appropriate for all user-defined x/y pairs. Specifically, this type of bivariate estimate is not 
                                   appropriate when both variables are dichotomous. When one variable is dichotomous, the Pearson 
                                   correlation is equivalent to the point-biserial correlation and therefore an appropriate estimate.',
-                                  align = 'left')
+                                  align = 'left',
+                                  style = 'font-size:90%')
                                 )
                        )
            
@@ -168,129 +166,128 @@ ui <- fluidPage(
      
 server <- function(input, output) {
   
-  data_input<-eventReactive(input$update, {
+  user_sim_plot<-eventReactive(input$update, {
 
     simd_pop<-dplyr::filter(final_sim_data,
                             true_r == input$true_r_size)
-        
-    base_data<-plyr::rdply(input$n_samples,
-                           sample_frac(simd_pop,
-                                       size = input$sample_size/100)
-                           ) %>%
-      group_by(.n) %>%
-                  mutate(
-                    x_descrete = as.numeric(cut(x, 7)),
-                    y_descrete = as.numeric(cut(y, 7))
-                  ) %>%
-      ungroup()
-    
-    
-    if(input$x_treat == 'Continuous'){
-      udef_data<-group_by(base_data,
-                          .n) %>%
-        mutate(user_x = x) %>%
+      
+      base_data<-plyr::rdply(input$n_samples,
+                             sample_frac(simd_pop,
+                                         size = input$sample_size/100)
+      ) %>%
+        group_by(.n) %>%
+        mutate(
+          x_descrete = as.numeric(cut(x, 7)),
+          y_descrete = as.numeric(cut(y, 7))
+        ) %>%
         ungroup()
+      
+      
+      if(input$x_treat == 'Continuous'){
+        udef_data<-group_by(base_data,
+                            .n) %>%
+          mutate(user_x = x) %>%
+          ungroup()
       } else if(input$x_treat == 'Descrete'){
-      udef_data<-group_by(base_data,
-                          .n) %>%
-        mutate(user_x = x_descrete) %>%
-        ungroup()
+        udef_data<-group_by(base_data,
+                            .n) %>%
+          mutate(user_x = x_descrete) %>%
+          ungroup()
       } else if(input$x_treat == 'Top-Box'){
         udef_data<-group_by(base_data,
                             .n) %>%
-        mutate(user_x = ifelse(x_descrete == 7, 1, 0)) %>%
+          mutate(user_x = ifelse(x_descrete == 7, 1, 0)) %>%
           ungroup()
       } else if(input$x_treat == 'Top2-Box'){
         udef_data<-group_by(base_data,
                             .n) %>%
-        mutate(user_x = ifelse(x_descrete >= 6, 1, 0)) %>%
+          mutate(user_x = ifelse(x_descrete >= 6, 1, 0)) %>%
           ungroup()
       } else if(input$x_treat == 'Median Split'){
         udef_data<-group_by(base_data,
                             .n) %>%
-        mutate(user_x = ifelse(x >= median(x), 1 ,0)) %>%
+          mutate(user_x = ifelse(x >= median(x), 1 ,0)) %>%
           ungroup()
       }
-    
-    if(input$y_treat == 'Continuous'){
-      udef_data<-group_by(udef_data,
-                          .n) %>%
-        mutate(user_y = y) %>%
-        ungroup()
-    } else if(input$y_treat == 'Descrete'){
-      udef_data<-group_by(udef_data,
-                          .n) %>%
-        mutate(user_y = y_descrete) %>%
-        ungroup()
-    } else if(input$y_treat == 'Top-Box'){
-      udef_data<-group_by(udef_data,
-                          .n) %>%
-      mutate(user_y = ifelse(y_descrete == 7, 1, 0)) %>%
-        ungroup()
-    } else if(input$y_treat == 'Top2-Box'){
-      udef_data<-group_by(udef_data,
-                          .n) %>%
-      mutate(user_y = ifelse(y_descrete >= 6, 1, 0)) %>%
-        ungroup()
-    } else if(input$y_treat == 'Median Split'){
-      udef_data<-group_by(udef_data,
-                          .n) %>%
-      mutate(user_y = ifelse(y >= median(y), 1, 0)) %>%
-        ungroup()
+      
+      if(input$y_treat == 'Continuous'){
+        udef_data<-group_by(udef_data,
+                            .n) %>%
+          mutate(user_y = y) %>%
+          ungroup()
+      } else if(input$y_treat == 'Descrete'){
+        udef_data<-group_by(udef_data,
+                            .n) %>%
+          mutate(user_y = y_descrete) %>%
+          ungroup()
+      } else if(input$y_treat == 'Top-Box'){
+        udef_data<-group_by(udef_data,
+                            .n) %>%
+          mutate(user_y = ifelse(y_descrete == 7, 1, 0)) %>%
+          ungroup()
+      } else if(input$y_treat == 'Top2-Box'){
+        udef_data<-group_by(udef_data,
+                            .n) %>%
+          mutate(user_y = ifelse(y_descrete >= 6, 1, 0)) %>%
+          ungroup()
+      } else if(input$y_treat == 'Median Split'){
+        udef_data<-group_by(udef_data,
+                            .n) %>%
+          mutate(user_y = ifelse(y >= median(y), 1, 0)) %>%
+          ungroup()
+      }
+      
+      data_input<-group_by(udef_data,
+                           .n) %>%
+        summarize('Continuous' = cor(x,y),
+                  'Descrete' = cor(x_descrete, y_descrete),
+                  'User Defined' = cor(user_x, user_y)
+        ) %>%
+        tidyr::gather(key = type,
+                      value = corr,
+                      -.n
+        ) %>%
+        mutate(type = factor(type,
+                             labels = c('X and Y Continuous',
+                                        'X and Y Descretized',
+                                        paste('X', input$x_treat, 'and Y', input$y_treat))
+        )
+        )
+      
+      ggthemr::ggthemr('flat')
+      
+      p<-ggplot(data_input, 
+                aes(x = type, 
+                    y = corr,
+                    fill = type
+                )) +
+        stat_summary(fun.data = quantiles_95, geom = 'boxplot') +
+        ggtitle("Correlation Coefficient Estimates by Variable Treatment") +
+        labs(x = "",
+             y = "Estimated Sample Correlation Coefficient",
+             fill = "") +
+        ylim(-1,1) +
+        theme(plot.title = element_text(hjust = .2),
+              axis.text.x = element_blank(),
+              axis.ticks.x = element_blank()) 
+      
+  })
+  
+  output$coef_plot<-renderPlotly({
+    if(input$show_points){
+      
+      p<-ggplotly(user_sim_plot()+geom_jitter()) %>%
+        config(displayModeBar = FALSE)
+      
+    } else { 
+      p<-ggplotly(user_sim_plot()) %>%
+        config(displayModeBar = FALSE)
     }
     
-    group_by(udef_data,
-             .n) %>%
-      summarize('Continuous' = cor(x,y),
-                'Descrete' = cor(x_descrete, y_descrete),
-                'User Defined' = cor(user_x, user_y)
-      ) %>%
-      tidyr::gather(key = type,
-                    value = corr,
-                    -.n
-      ) %>%
-      mutate(type = factor(type,
-                           labels = c('X and Y Continuous',
-                                      'X and Y Descretized',
-                                      'User Defined')
-                           )
-      )
-    
+    p
   })
-   
-  output$coef_plot<-renderPlotly({
-    
-    ggthemr::ggthemr('flat')
-    
-    p<-ggplot(data_input(), 
-           aes(x = type, 
-               y = corr,
-               fill = type
-               )) +
-      stat_summary(fun.data = quantiles_95, geom = 'boxplot') +
-      ggtitle("Correlation Coefficient Estimates by Variable Treatment") +
-      labs(x = "",
-           y = "Estimated Sample Correlation Coefficient",
-           fill = "") +
-      ylim(-1,1) +
-      theme(plot.title = element_text(hjust = .2),
-            axis.text.x = element_blank(),
-            axis.ticks.x = element_blank()) 
-    
-   if(input$show_points){
-     
-     p<-ggplotly(p+geom_jitter()) %>%
-       config(displayModeBar = FALSE)
-   
-     } else { 
-       p<-ggplotly(p) %>%
-     config(displayModeBar = FALSE)
-       }
-    
-    
-    
-  }
-  )
+
+
 }
 
 # Run the application 
